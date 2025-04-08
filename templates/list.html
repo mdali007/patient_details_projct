@@ -172,7 +172,9 @@
               p.gender || 'N/A',
               p.blood_type || 'N/A',
               p.disease || 'N/A',
-              gridjs.html(`<button onclick="window.location.href='/patient-details/${p.patient_id}/'">View</button>`)
+              gridjs.html(`<button onclick="window.location.href='/patient-details/${p.patient_id}/'">View</button>
+              <button onclick="window.location.href='/deletepatient/${p.patient_id}/'">delete</button>
+              `)
             ]);
 
             if (this.currentGrid) this.currentGrid.destroy();
