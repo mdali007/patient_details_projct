@@ -1,0 +1,41 @@
+
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Patient Details</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+<div id="app">
+  <h1>Details of Patient: {{ patient.first_name }} {{ patient.last_name }}</h1>
+  <ul>
+    <li><strong>Patient ID:</strong> {{ patient.patient_id }}</li>
+    <li><strong>Date of Birth:</strong> {{ patient.date_of_birth }}</li>
+    <li><strong>Gender:</strong> {{ patient.gender }}</li>
+    <li><strong>Blood Type:</strong> {{ patient.blood_type }}</li>
+    <li><strong>Disease:</strong> {{ patient.disease }}</li>
+  </ul>
+  <a href="/">Back to Patient List</a>
+</div>
+
+<script>
+  new Vue({
+    el: '#app',
+    data: {
+      patient: {}
+    },
+    mounted() {
+      const urlParts = window.location.pathname.split('/');
+      const patientId = urlParts[urlParts.length - 2]; 
+
+      axios.get(`/api/get-patient/${patientId}/`)
+        .then(response => {
+          this.patient = response.data;
+        });
+    }
+  });
+</script>
+</body>
+</html>

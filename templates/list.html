@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Patient Management System</title>
+  
+  <!-- Grid.js CSS -->
+  <link href="https://unpkg.com/gridjs/dist/theme/mermaid.min.css" rel="stylesheet" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    h1 {
+      margin-bottom: 20px;
+    }
+    .pat-box {
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .pat-box input, .search-box select {
+      padding: 8px;
+      flex: 1;
+      min-width: 150px;
+    }
+    .pat-box button {
+      padding: 8px 12px;
+    }
+
+    .search-box {
+      margin-bottom: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .search-box input, .search-box select {
+      padding: 8px;
+      flex: 1;
+      min-width: 150px;
+    }
+    .search-box button {
+      padding: 8px 12px;
+    }
+    #grid {
+      margin-top: 20px;
+    }
+    .pagination {
+      margin-top: 20px;
+    }
+    .pagination button {
+      padding: 8px 12px;
+      margin: 0 5px;
+      cursor: pointer;
+    }
+    .pagination button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+    .error {
+      color: red;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>Patient Management System</h1>
+
+  <div class="pat-box">
+    <input type="text" id="patid" placeholder="Patient ID">
+    <input type="text" id="patFirst" placeholder="First Name">
+    <input type="text" id="patLast" placeholder="Last Name">
+    <input type="date" id="patDb" placeholder="Date of Birth">
+    <select id="patGender">
+      <option value="">Gender</option>
+      <option value="Male">Male</option>
+      <option value="Female">Female</option>
+      <option value="Other">Other</option>
+    </select>
+    <input type="text" id="patBlood" placeholder="Blood Type">
+    <input type="text" id="patDisease" placeholder="Disease">
+    <button onclick="addPatients()">Add patient</button>
+  </div>
+
+
+  <!-- Search Box -->
+  <div class="search-box">
+    <input type="text" id="searchId" placeholder="Patient ID">
+    <input type="text" id="searchFirst" placeholder="First Name">
+    <input type="text" id="searchLast" placeholder="Last Name">
+    <input type="date" id="searchDob" placeholder="Date of Birth">
+    <select id="searchGender">
+      <option value="">Gender</option>
+      <option value="Male">Male</option>
+      <option value="Female">Female</option>
+      <option value="Other">Other</option>
+    </select>
+    <input type="text" id="searchBlood" placeholder="Blood Type">
+    <input type="text" id="searchDisease" placeholder="Disease">
+    <button onclick="loadPatients(1)">Search</button>
+    <button onclick="clearSearch()">Clear</button>
+  </div>
+
+  <!-- Error Message -->
+  <div id="errorMsg" class="error"></div>
+
+  <!-- Grid.js Table -->
+  <div id="grid"></div>
+
+  <!-- Pagination -->
+  <div id="pagination" class="pagination"></div>
+
+  <!-- Scripts -->
+  <script src="https://unpkg.com/gridjs/dist/gridjs.umd.js"></script>
+  <script>
+    let currentPage = 1;
+    let totalPatients = 0;
+    let totalPages = 1;
+    let perPage = 20;
+    let currentGrid = null;
+
+    const csrfToken = '{{ csrf_token }}'; 
+
+    function loadPatients(page = 1) {
+      const patient_id = document.getElementById('searchId').value.trim();
+      const first_name = document.getElementById('searchFirst').value.trim();
+      const last_name = document.getElementById('searchLast').value.trim();
+      const date_of_birth = document.getElementById('searchDob').value.trim();
+      const gender = document.getElementById('searchGender').value.trim();
+      const blood_type = document.getElementById('searchBlood').value.trim();
+      const disease = document.getElementById('searchDisease').value.trim();
+
+      const params = new URLSearchParams({
+        page,
+        patient_id,
+        first_name,
+        last_name,
+        date_of_birth,
+        gender,
+        blood_type,
+        disease,
+        sort: 'patient_id',
+        direction: 'asc'
+      });
+
+      fetch(`/api/patients/?${params.toString()}`)
+        .then(response => response.json())
+        .then(data => {
+          if (!data.patients || !Array.isArray(data.patients)) {
+            throw new Error('Invalid data format from API');
+          }
+
+          totalPatients = data.total || 0;
+          totalPages = data.pages || 1;
+          currentPage = page;
+
+            const tableData = data.patients.map(p => [
+            p.patient_id || 'N/A',
+            p.first_name || 'N/A',
+            p.last_name || 'N/A',
+            p.date_of_birth || 'N/A',
+            p.gender || 'N/A',
+            p.blood_type || 'N/A',
+            p.disease || 'N/A',
+            gridjs.html(`<button onclick="viewPatientDetails('${p.patient_id}')">View</button>`)
+            ]);
+
+          if (currentGrid) currentGrid.destroy();
+
+          currentGrid = new gridjs.Grid({
+            columns: [
+              "Patient ID", "First Name", "Last Name", 
+              "Date of Birth", "Gender", "Blood Type", "Disease", "Action"
+            ],
+
+            data: tableData,
+            pagination: false,
+            sort: true,
+            search: false,
+            language: {
+              loading: "Loading patients...",
+              notFound: "No patients found."
+            }
+          }).render(document.getElementById("grid"));
+
+          document.getElementById('errorMsg').textContent = '';
+          renderPagination();
+        })
+        .catch(error => {
+          console.error(error);
+          document.getElementById('errorMsg').textContent = 'Failed to load patient data. Please try again.';
+        });
+    }
+
+        function viewPatientDetails(patientId) {
+        window.location.href = `/patient-details/${patientId}/`;
+
+    }
+
+
+    function renderPagination() {
+      let paginationHtml = '';
+
+      // Determine the range of pages to show (e.g., show 5 pages around the current page)
+      const range = 5;
+      let startPage = Math.max(1, currentPage - Math.floor(range / 2));
+      let endPage = Math.min(totalPages, currentPage + Math.floor(range / 2));
+
+      // Adjust if we're near the start or end of the pagination
+      if (currentPage <= Math.floor(range / 2)) {
+        endPage = Math.min(totalPages, range);
+      } else if (currentPage + Math.floor(range / 2) >= totalPages) {
+        startPage = Math.max(1, totalPages - range + 1);
+      }
+
+      // Generate pagination buttons for the range
+      if (currentPage > 1) {
+        paginationHtml += `<button onclick="loadPatients(${currentPage - 1})">Previous</button>`;
+      }
+
+      for (let i = startPage; i <= endPage; i++) {
+        paginationHtml += `<button onclick="loadPatients(${i})" ${i === currentPage ? 'disabled' : ''}>${i}</button>`;
+      }
+
+      if (currentPage < totalPages) {
+        paginationHtml += `<button onclick="loadPatients(${currentPage + 1})">Next</button>`;
+      }
+
+      document.getElementById('pagination').innerHTML = paginationHtml;
+    }
+
+
+    // For add patients
+
+function addPatients() {
+  const patient_id = document.getElementById('patid').value.trim();
+  const first_name = document.getElementById('patFirst').value.trim();
+  const last_name = document.getElementById('patLast').value.trim();
+  const date_of_birth = document.getElementById('patDb').value.trim();
+  const gender = document.getElementById('patGender').value.trim();
+  const blood_type = document.getElementById('patBlood').value.trim();
+  const disease = document.getElementById('patDisease').value.trim();
+
+  fetch('/api/addpatients/', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': csrfToken
+    },
+    body: JSON.stringify({
+      patient_id,
+      first_name,
+      last_name,
+      date_of_birth,
+      gender,
+      blood_type,
+      disease
+    })
+  })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to add patient');
+      }
+      return response.json();
+    })
+    .then(data => {
+      document.getElementById('errorMsg').textContent = 'Patient added successfully!';
+      loadPatients(currentPage); // Reload patients after adding
+    })
+    .catch(error => {
+      console.error(error);
+      document.getElementById('errorMsg').textContent = 'Failed to add patient. Please try again.';
+    });
+}
+
+
+
+    function clearSearch() {
+      document.getElementById('searchId').value = '';
+      document.getElementById('searchFirst').value = '';
+      document.getElementById('searchLast').value = '';
+      document.getElementById('searchDob').value = '';
+      document.getElementById('searchGender').value = '';
+      document.getElementById('searchBlood').value = '';
+      document.getElementById('searchDisease').value = '';
+      loadPatients(1);
+    }
+
+    // Load initial data
+    loadPatients();
+  </script>
+</body>
+</html>
