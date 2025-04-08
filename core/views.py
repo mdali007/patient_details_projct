@@ -95,3 +95,12 @@ def pat_details(request, patient_id):
 
      patient = collection.find_one({"patient_id": patient_id})
      return render(request, 'pat_detail.html', {'patient': patient})
+
+
+def delete_patient(request, patient_id):
+    db = get_db()
+    collection = db.patients
+    
+    collection.delete_one({'patient_id': patient_id})
+    return redirect(request.META.get('HTTP_REFERER', '/'))
+    
